@@ -1,0 +1,423 @@
+{
+  "info": {
+    "name": "School Library System API",
+    "description": "Complete collection for the School Library Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:5000/api" },
+    { "key": "accessToken",  "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "studentId",    "value": "" },
+    { "key": "bookId",       "value": "" },
+    { "key": "authorId",     "value": "" },
+    { "key": "borrowId",     "value": "" },
+    { "key": "attendantId",  "value": "" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Setup — Create First Admin (run once)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) {",
+            "  pm.collectionVariables.set('accessToken', r.data.accessToken);",
+            "  pm.collectionVariables.set('refreshToken', r.data.refreshToken);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/auth/setup",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Head Librarian\",\n  \"email\": \"admin@school.com\",\n  \"password\": \"Admin@12345\",\n  \"staffId\": \"LIB-ADMIN-001\"\n}" }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) {",
+            "  pm.collectionVariables.set('accessToken', r.data.accessToken);",
+            "  pm.collectionVariables.set('refreshToken', r.data.refreshToken);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@school.com\",\n  \"password\": \"Admin@12345\"\n}" }
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) {",
+            "  pm.collectionVariables.set('accessToken', r.data.accessToken);",
+            "  pm.collectionVariables.set('refreshToken', r.data.refreshToken);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/auth/change-password",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"Admin@12345\",\n  \"newPassword\": \"NewPass@123\",\n  \"confirmPassword\": \"NewPass@123\"\n}" }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/auth/logout",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Attendants",
+      "item": [
+        {
+          "name": "Get All Attendants",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/attendants",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Attendant by ID",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/attendants/{{attendantId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Attendant (admin only)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) pm.collectionVariables.set('attendantId', r.data._id);"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/attendants",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Grace Hopper\",\n  \"email\": \"grace@school.com\",\n  \"password\": \"Staff@12345\",\n  \"staffId\": \"STF-001\",\n  \"role\": \"attendant\",\n  \"shift\": \"morning\"\n}" }
+          }
+        },
+        {
+          "name": "Bulk Create Attendants (admin only)",
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/attendants/bulk",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"attendants\": [\n    { \"name\": \"Alan Turing\", \"email\": \"alan@school.com\", \"password\": \"Staff@12345\", \"staffId\": \"STF-002\", \"shift\": \"afternoon\" },\n    { \"name\": \"Ada Lovelace\", \"email\": \"ada@school.com\", \"password\": \"Staff@12345\", \"staffId\": \"STF-003\", \"shift\": \"evening\" }\n  ]\n}" }
+          }
+        },
+        {
+          "name": "Update Attendant (admin only)",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/attendants/{{attendantId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"shift\": \"evening\",\n  \"isActive\": true\n}" }
+          }
+        },
+        {
+          "name": "Delete Attendant (admin only)",
+          "request": {
+            "method": "DELETE", "url": "{{baseUrl}}/attendants/{{attendantId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎓 Students",
+      "item": [
+        {
+          "name": "Get All Students",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/students?page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Search Students",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/students?search=Ada",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Student by ID",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/students/{{studentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Student Borrow History",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/students/{{studentId}}/borrows",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Student",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) pm.collectionVariables.set('studentId', r.data._id);"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/students",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Amara Obi\",\n  \"email\": \"amara.obi@student.com\"\n}" }
+          }
+        },
+        {
+          "name": "Update Student",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/students/{{studentId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Amara Chisom Obi\",\n  \"email\": \"amara.obi@newmail.com\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Student",
+          "request": {
+            "method": "DELETE", "url": "{{baseUrl}}/students/{{studentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "✍️ Authors",
+      "item": [
+        {
+          "name": "Get All Authors",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/authors",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Author by ID (includes books)",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/authors/{{authorId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Author",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) pm.collectionVariables.set('authorId', r.data._id);"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/authors",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Chinua Achebe\",\n  \"nationality\": \"Nigerian\",\n  \"bio\": \"Nigerian novelist and poet, widely regarded as a founding father of modern African literature.\"\n}" }
+          }
+        },
+        {
+          "name": "Update Author",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/authors/{{authorId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"bio\": \"Updated biography.\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Author",
+          "request": {
+            "method": "DELETE", "url": "{{baseUrl}}/authors/{{authorId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Books",
+      "item": [
+        {
+          "name": "Get All Books",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/books?page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Available Books Only",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/books?available=true",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Search Books",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/books?search=things+fall+apart",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Filter by Genre",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/books?genre=Fiction",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Book by ID",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/books/{{bookId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Book",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) pm.collectionVariables.set('bookId', r.data._id);"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/books",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Things Fall Apart\",\n  \"isbn\": \"9780385474542\",\n  \"author\": \"{{authorId}}\",\n  \"genre\": \"African Literature\",\n  \"description\": \"A story of pre-colonial life in Nigeria.\",\n  \"publishedYear\": 1958,\n  \"publisher\": \"Heinemann\",\n  \"totalCopies\": 5,\n  \"shelfLocation\": \"A1-S3\"\n}" }
+          }
+        },
+        {
+          "name": "Update Book",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/books/{{bookId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"totalCopies\": 8,\n  \"shelfLocation\": \"B2-S1\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Book",
+          "request": {
+            "method": "DELETE", "url": "{{baseUrl}}/books/{{bookId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 Borrows",
+      "item": [
+        {
+          "name": "Issue Book to Student",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const r = pm.response.json();",
+            "if (r.data) pm.collectionVariables.set('borrowId', r.data._id);"
+          ]}}],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/borrows",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"bookId\": \"{{bookId}}\",\n  \"studentId\": \"{{studentId}}\",\n  \"notes\": \"Issued at front desk\"\n}" }
+          }
+        },
+        {
+          "name": "Return Book",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/borrows/{{borrowId}}/return",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Returned in good condition\"\n}" }
+          }
+        },
+        {
+          "name": "Get All Borrow Records",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/borrows?page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Filter Active Borrows",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/borrows?status=active",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Filter Overdue Borrows",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/borrows?status=overdue",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Borrow Record by ID",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/borrows/{{borrowId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Filter by Student",
+          "request": {
+            "method": "GET", "url": "{{baseUrl}}/borrows?studentId={{studentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "❤️ Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        }
+      ]
+    }
+  ]
+}
