@@ -51,4 +51,15 @@ app.use((req, res) => {
 // MUST be last. Catches every error passed via next(error).
 app.use(errorMiddleware);
 
+
+// TEMP: log all registered routes
+app._router.stack.forEach(r => {
+  if (r.route) console.log(r.route.path);
+  else if (r.handle && r.handle.stack) {
+    r.handle.stack.forEach(s => {
+      if (s.route) console.log(s.route.path);
+    });
+  }
+});
+
 module.exports = app;

@@ -115,3 +115,24 @@ exports.verifyOtp = async (req, res, next) => {
     );
   } catch (err) { next(err); }
 };
+// --- POST /api/auth/forgot-password ------------------------------------------
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    await authService.forgotPassword(email);
+    res.status(200).json(
+      new ApiResponse(200, null, "If that email is registered, a reset code has been sent.")
+    );
+  } catch (err) { next(err); }
+};
+
+// --- POST /api/auth/reset-password -------------------------------------------
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    await authService.resetPassword(email, otp, newPassword);
+    res.status(200).json(
+      new ApiResponse(200, null, "Password reset successfully. Please log in with your new password.")
+    );
+  } catch (err) { next(err); }
+};

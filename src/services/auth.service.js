@@ -7,7 +7,7 @@ const bcrypt           = require("bcryptjs");
 const LibraryAttendant = require("../models/LibraryAttendant");
 const Otp              = require("../models/Otp");
 const ApiError         = require("../utils/ApiError");
-const { sendOtpEmail } = require("./email.service");
+const { sendOtpEmail, sendPasswordResetEmail } = require("./email.service");
 
 const {
   JWT_SECRET,
@@ -103,10 +103,9 @@ const changePassword = async (attendantId, currentPassword, newPassword) => {
 
 
 // ─── sendOtp ──────────────────────────────────────────────────────────────────
-// Step 1 of 2FA — verify credentials then generate and email a 6-digit OTP
+// Step 1 of 2FA login — verify credentials then send OTP
 const sendOtp = async (email, password) => {
 
-  // Verify credentials first
   const attendant = await LibraryAttendant
     .findOne({ email })
     .select("+password");
@@ -119,56 +118,46 @@ const sendOtp = async (email, password) => {
     throw new ApiError(401, "Your account has been deactivated. Contact an admin.");
   }
 
-  // Generate random 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Hash before saving — never store plain OTP in DB
+  const otp       = Math.floor(100000 + Math.random() * 900000).toString();
   const hashedOtp = await bcrypt.hash(otp, 10);
 
-  // Delete any existing OTP for this email — only one active at a time
-  await Otp.deleteMany({ email });
+  await Otp.deleteMany({ email, type: "login" });
 
-  // Save hashed OTP with 10-minute expiry
   await Otp.create({
     email,
     otp:       hashedOtp,
+    type:      "login",
     expiresAt: new Date(Date.now() + 10 * 60 * 1000),
   });
 
-  // Send plain OTP to user's email
   await sendOtpEmail(email, otp, attendant.name);
 
-  // Return email so frontend can pre-fill the verify screen
   return { email };
 };
 
 
 // ─── verifyOtp ────────────────────────────────────────────────────────────────
-// Step 2 of 2FA — verify OTP then issue tokens
+// Step 2 of 2FA login — verify OTP then issue tokens
 const verifyOtp = async (email, otp) => {
 
-  const otpDoc = await Otp.findOne({ email });
+  const otpDoc = await Otp.findOne({ email, type: "login" });
 
   if (!otpDoc) {
     throw new ApiError(400, "No OTP found for this email. Please log in again.");
   }
 
-  // Check expiry
   if (otpDoc.expiresAt < new Date()) {
-    await Otp.deleteOne({ email });
+    await Otp.deleteOne({ email, type: "login" });
     throw new ApiError(400, "OTP has expired. Please log in again.");
   }
 
-  // Compare submitted OTP with hash
   const isMatch = await bcrypt.compare(otp, otpDoc.otp);
   if (!isMatch) {
     throw new ApiError(400, "Invalid OTP. Please check your email and try again.");
   }
 
-  // Delete immediately — single use only
-  await Otp.deleteOne({ email });
+  await Otp.deleteOne({ email, type: "login" });
 
-  // Issue tokens
   const attendant        = await LibraryAttendant.findOne({ email });
   attendant.lastLoginAt  = new Date();
   const accessToken      = signAccessToken(attendant._id);
@@ -180,4 +169,86 @@ const verifyOtp = async (email, otp) => {
 };
 
 
-module.exports = { login, refresh, logout, changePassword, sendOtp, verifyOtp };
+// ─── forgotPassword ───────────────────────────────────────────────────────────
+// Sends a password reset code to the attendant's email
+const forgotPassword = async (email) => {
+
+  // Check if email exists — use generic message to prevent email enumeration
+  const attendant = await LibraryAttendant.findOne({ email });
+
+  // We always return success even if email not found — security best practice
+  // This prevents attackers from knowing which emails are registered
+  if (!attendant || !attendant.isActive) {
+    return { email }; // silently do nothing but pretend success
+  }
+
+  const otp       = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = await bcrypt.hash(otp, 10);
+
+  // Delete any existing reset OTP for this email
+  await Otp.deleteMany({ email, type: "reset" });
+
+  // Save reset OTP with 10-minute expiry
+  await Otp.create({
+    email,
+    otp:       hashedOtp,
+    type:      "reset",
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+  });
+
+  // Send reset email
+  await sendPasswordResetEmail(email, otp, attendant.name);
+
+  return { email };
+};
+
+
+// ─── resetPassword ────────────────────────────────────────────────────────────
+// Verifies reset code and updates password
+const resetPassword = async (email, otp, newPassword) => {
+
+  const otpDoc = await Otp.findOne({ email, type: "reset" });
+
+  if (!otpDoc) {
+    throw new ApiError(400, "No reset code found. Please request a new one.");
+  }
+
+  if (otpDoc.expiresAt < new Date()) {
+    await Otp.deleteOne({ email, type: "reset" });
+    throw new ApiError(400, "Reset code has expired. Please request a new one.");
+  }
+
+  const isMatch = await bcrypt.compare(otp, otpDoc.otp);
+  if (!isMatch) {
+    throw new ApiError(400, "Invalid reset code. Please check your email and try again.");
+  }
+
+  // Delete the used reset OTP immediately
+  await Otp.deleteOne({ email, type: "reset" });
+
+  // Update the password
+  const attendant = await LibraryAttendant
+    .findOne({ email })
+    .select("+password");
+
+  if (!attendant) {
+    throw new ApiError(404, "Account not found.");
+  }
+
+  attendant.password          = newPassword;
+  attendant.passwordChangedAt = new Date();
+  attendant.refreshToken      = null; // invalidate all existing sessions
+  await attendant.save();
+};
+
+
+module.exports = {
+  login,
+  refresh,
+  logout,
+  changePassword,
+  sendOtp,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+};
