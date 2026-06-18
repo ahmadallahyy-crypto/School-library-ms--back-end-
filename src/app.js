@@ -19,9 +19,9 @@ console.log('[DEBUG] NODE_ENV:', NODE_ENV);
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin:         NODE_ENV === "production"
-    ? process.env.ALLOWED_ORIGINS?.split(",") || []
-    : "*",
+  origin: NODE_ENV === "production"
+  ? process.env.ALLOWED_ORIGINS?.split(",") || ["https://sch-library-management-system-front.vercel.app"]
+  : "*",
   methods:        ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
